@@ -1,9 +1,10 @@
 interface EndUser
 {
-    // These methods are common to both the Client and the Guest
-    void searchForServices(Consumer consumer);
+
+    boolean loginClient();
+    void searchForServices();
     boolean readyToHire();
-    void viewBookingInfo();
+    void viewBookings();
     void updateRequest();
-    void loadDashboard();
+
 }

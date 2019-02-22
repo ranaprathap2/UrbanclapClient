@@ -28,9 +28,10 @@ public class Bookings {
         rating = 0;
     }
 
-    public void makeRequest(Consumer consumer)
+    public void makeRequest(Client client)
     {
         String bookingDateAsString=null;
+
         Scanner in = new Scanner(System.in);
 
         requestID = getRequestID();
@@ -38,17 +39,7 @@ public class Bookings {
         System.out.println("Enter Partner ID : ");
         partnerID = in.next();
 
-        if(consumer instanceof Client)
-        {
-            Client client = (Client)consumer;
-            clientID = client.getClientID();
-        }
-
-        if(consumer instanceof Guest)
-        {
-            Guest guest = (Guest)consumer;
-            clientID = guest.getGuestID();
-        }
+        clientID = client.getLoggedInClientID();
 
         do {
             System.out.println("Enter Your Service Hiring Date yyyy-MM-dd : ");
@@ -73,7 +64,7 @@ public class Bookings {
         saveRequestToDB();
     }
 
-    public void saveRequestToDB()
+        public void saveRequestToDB()
     {
         Connection connection = null;
         PreparedStatement pstmt = null;
@@ -81,37 +72,37 @@ public class Bookings {
         SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         String sql = "INSERT INTO Bookings(RequestID,ClientID,PartnerID,DateOfRequest,DateOfBooking,Status) VALUES(?,?,?,?,?,?)";
 
+        try
+        {
+            connection = SQLiteConnection.connectDB();
+
+            pstmt = connection.prepareStatement(sql);
+            pstmt.setString(1, requestID);
+            pstmt.setString(2, clientID);
+            pstmt.setString(3, partnerID);
+            pstmt.setString(4, pattern.format(dateOfRequest));
+            pstmt.setString(5, pattern.format(dateOfBooking));
+            pstmt.setString(6, status );
+
+            pstmt.executeUpdate();
+
+            System.out.println("Request Successful !");
+        }
+        catch(Exception e)
+        {
+            System.out.println(e);
+        }
+        finally {
             try
             {
-                connection = SQLiteConnection.connectDB();
-
-                pstmt = connection.prepareStatement(sql);
-                pstmt.setString(1, requestID);
-                pstmt.setString(2, clientID);
-                pstmt.setString(3, partnerID);
-                pstmt.setString(4, pattern.format(dateOfRequest));
-                pstmt.setString(5, pattern.format(dateOfBooking));
-                pstmt.setString(6, status );
-
-                pstmt.executeUpdate();
-
-                System.out.println("Request Successful !");
+                pstmt.close();
+                connection.close();
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 System.out.println(e);
             }
-            finally {
-                try
-                {
-                    pstmt.close();
-                    connection.close();
-                }
-                catch (Exception e)
-                {
-                    System.out.println(e);
-                }
-            }
+        }
     }
 
     private int generateRequestID(String passQuery)
@@ -133,6 +124,7 @@ public class Bookings {
                 getValue = Integer.parseInt(resultSet.getString(1));
             }
         }
+
         catch(Exception e)
         {
             System.out.println(e.getMessage());
@@ -156,10 +148,11 @@ public class Bookings {
         return newID;
     }
 
-    public boolean getOngoingRequests(Consumer consumer)
+    public boolean getOngoingRequests(String clientID)
     {
+        //String parseQuery="select *from Bookings where ClientID = ? and Status = 'Unprocessed'";
+        String parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID AND Bookings.Status='Unprocessed' AND Bookings.ClientID=?";
         boolean resultSetExist=true;
-        String parseQuery = null;
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -167,40 +160,9 @@ public class Bookings {
 
         try
         {
-            String userID = null;
-
-            parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID AND Bookings.Status='Unprocessed' AND Bookings.ClientID=?";
-
-            if(consumer instanceof Client)
-            {
-
-                Client client = (Client)consumer;
-                userID = client.getClientID();
-                System.out.println("Ongoing Requests for ClientID = "+userID);
-                System.out.println("Client Name : "+client.getClientName());
-
-                System.out.println();
-            }
-
-            else if(consumer instanceof Guest)
-            {
-                Scanner in = new Scanner(System.in);
-
-                System.out.println("Enter Your Mail ID : ");
-                String mail = in.next();
-
-                userID = getGuestDetailsFromMail(mail);
-
-                if(userID != null)
-                    System.out.println("Ongoing Request for GuestID = "+userID);
-                else
-                    System.out.println("Invalid Guest !");
-
-            }
-
             connection = SQLiteConnection.connectDB();
             preparedStatement = connection.prepareStatement(parseQuery);
-            preparedStatement.setString(1,userID);
+            preparedStatement.setString(1,clientID);
 
             resultSet = preparedStatement.executeQuery();
 
@@ -209,10 +171,12 @@ public class Bookings {
             else
             {
                 System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------");
-                System.out.println("RequestID     PartnerID                 PartnerName                     Profession               ContactNo           DateOfRequest         DateOfBooking ");
+                System.out.println("RequestID     PartnerID                 PartnerName                     Profession             ContactNo           DateOfRequest         DateOfBooking ");
                 System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------");
                 do{
-                    System.out.printf("%8s    %10s    %25s     %30s          %10s      %18s    %18s \n",resultSet.getString("RequestID"),resultSet.getString("PartnerID"),resultSet.getString("Name"),resultSet.getString("Profession"),resultSet.getString("ContactNo"),resultSet.getString("DateOfRequest"),resultSet.getString("DateOfBooking"));
+                    //System.out.println(resultSet.getString("RequestID") +"          "+resultSet.getString("PartnerID")+"            "+resultSet.getString("Name")+"             "+resultSet.getString("Profession")+"           "+resultSet.getString("ContactNo")+"           "+resultSet.getString("DateOfRequest")+"          "+resultSet.getString("DateOfBooking"));
+                    System.out.printf("%8s    %10s    %25s         %30s     %10s      %18s    %18s \n",resultSet.getString("RequestID"),resultSet.getString("PartnerID"),resultSet.getString("Name"),resultSet.getString("Profession"),resultSet.getString("ContactNo"),resultSet.getString("DateOfRequest"),resultSet.getString("DateOfBooking"));
+
                 }while(resultSet.next());
 
                 System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------");
@@ -235,6 +199,7 @@ public class Bookings {
             {
                 System.out.println(e.getMessage());
             }
+
             return resultSetExist;
         }
     }
@@ -467,52 +432,6 @@ public class Bookings {
             }
         }
         return resultSetExist;
-    }
-
-    private String getGuestDetailsFromMail(String mail)
-    {
-        String parseQuery="select GuestID from Guests where eMail=?";
-        boolean resultSetExist=true;
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-
-        String guestID = null;
-
-        try
-        {
-            connection = SQLiteConnection.connectDB();
-            preparedStatement = connection.prepareStatement(parseQuery);
-            preparedStatement.setString(1,mail);
-
-            resultSet = preparedStatement.executeQuery();
-
-            if(resultSet.next()==false)
-                resultSetExist=false;
-            else
-            {
-                guestID=resultSet.getString("GuestID");
-            }
-        }
-        catch(Exception e)
-        {
-            System.out.println(e.getMessage());
-        }
-        finally {
-            try
-            {
-                preparedStatement.close();
-                resultSet.close();
-                connection.close();
-            }
-            catch(Exception e)
-            {
-                System.out.println(e.getMessage());
-            }
-        }
-
-        return guestID;
     }
 }
 

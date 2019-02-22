@@ -1,10 +1,5 @@
 public class PasswordUtils {
 
-    // validate password
-    public static boolean validate(String password, String confirmPassword) {
-        return password.equals(confirmPassword);
-    }
-
     // function to hash password using Bcrypt
     public static String hashPassword(String originalPassword, int genericSaltLength)
     {

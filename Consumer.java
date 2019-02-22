@@ -3,12 +3,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Scanner;
 
 public abstract class Consumer implements EndUser {
 
-    public int generateUserID(String passQuery) {
+    public int generateClientID(String passQuery) {
         Connection connection = null;
         Statement statement = null;
         ResultSet resultSet = null;
@@ -32,67 +31,36 @@ public abstract class Consumer implements EndUser {
                 System.out.println(e);
             }
         }
+
         return getValue;
     }
 
-    public String getUserID(Consumer user) {
-
-        String newID = null;
-
-        if(user instanceof Client)
-        {
-           newID = "CL-" + generateUserID("select count(ClientID)+1 from Clients");
-        }
-
-        if(user instanceof Guest)
-        {
-            newID = "GU-" + generateUserID("select count(GuestID)+1 from Guests");
-        }
-
+    public String getClientID() {
+        String newID = "CL-" + generateClientID("select count(ClientID)+1 from Clients");
         return newID;
     }
 
+    public boolean validate(String password, String confirmPassword) {
+        return password.equals(confirmPassword);
+    }
 
-    public void saveUserToDB(Consumer user) {
-
+    public void saveClientToDB(String clientID,String clientName,String eMailID,String password) {
         Connection connection = SQLiteConnection.connectDB();
         PreparedStatement pstmt = null;
-        String sql = null;
+
+        String sql = "INSERT INTO Clients VALUES(?,?,?,?)";
+        String hashedPassword = PasswordUtils.hashPassword(password,12);
 
         try {
-
-            if(user instanceof Client)
-            {
-                Client client = (Client)user;
-                String clientID = getUserID(client);
-                client.setClientID(clientID);
-
-                sql = "INSERT INTO Clients VALUES(?,?,?,?,?)";
-                pstmt = connection.prepareStatement(sql);
-                pstmt.setString(1,clientID);
-                pstmt.setString(2,client.getClientName());
-                pstmt.setString(3,client.getContactNo());
-                pstmt.setString(4,client.geteMailID());
-                pstmt.setString(5,PasswordUtils.hashPassword(client.getPassword(),12));
-            }
-
-            else if(user instanceof Guest)
-            {
-                Guest guest = (Guest)user;
-                String guestID = getUserID(guest);
-                guest.setGuestID(guestID);
-
-                sql = "INSERT INTO Guests VALUES(?,?,?,?)";
-                pstmt = connection.prepareStatement(sql);
-                pstmt.setString(1,guest.getGuestID());
-                pstmt.setString(2,guest.getGuestName());
-                pstmt.setString(3,guest.getContactNo());
-                pstmt.setString(4,guest.geteMailID());
-            }
+            pstmt = connection.prepareStatement(sql);
+            pstmt.setString(1, clientID);
+            pstmt.setString(2, clientName);
+            pstmt.setString(3, eMailID);
+            pstmt.setString(4, hashedPassword);
 
             pstmt.executeUpdate();
-            System.out.println("Registration Successful !");
 
+            System.out.println("Registration Successful !");
         } catch (Exception e) {
             System.out.println(e);
         } finally {
@@ -102,56 +70,56 @@ public abstract class Consumer implements EndUser {
                 System.out.println(e);
             }
         }
+
     }
 
-    public void searchForServices(Consumer user) {
-        int serviceCategory,city;
+    public void loadDashboard() {
+        System.out.println("Logged in as Client: " );
         Scanner in = new Scanner(System.in);
 
-        System.out.println("LIST OF CITIES : ");
-        HashMap<Integer, String> mapCities= fetchCitiesFromDB();
+        int choice = 0;
 
-        System.out.printf("\nChoose Your City  : ");
-        city = in.nextInt();
+        do {
+            System.out.println("1 -> SEARCH FOR SERVICES");
+            System.out.println("2 -> VIEW BOOKINGS");
+            System.out.println("3 -> GO BACK TO MAIN");
 
+            choice = in.nextInt();
 
-        System.out.println("LIST OF SERVICE CATEGORIES : ");
-        HashMap<Integer, String> mapServices= fetchServiceTypesFromDB();
+            if (choice == 1)
+                searchForServices();
 
-        System.out.printf("\nPick One : ");
+            if (choice == 2)
+                viewBookings();
+
+        } while (choice != 3);
+    }
+
+    public void searchForServices() {
+        int serviceCategory = 0, city = 0;
+        Scanner in = new Scanner(System.in);
+
+        listServicesOffered();
+        System.out.print("Choose Your Service Category : ");
         serviceCategory = in.nextInt();
 
         System.out.println();
 
-        boolean partnersFound = getPartnersFromDB(mapToServices(mapServices,serviceCategory), mapToCities(mapCities,city));
+        listCitiesOffered();
+        System.out.print("Choose Your City : ");
+        city = in.nextInt();
+
+        boolean partnersFound = getPartnersFromDB(keyServiceMap(serviceCategory), keyCityMap(city));
 
         if (partnersFound) {
             if (readyToHire()) {
-                // If a guest user wants to make a request then add this details
-                if(user instanceof Guest)
-                {
-                    Guest guest =(Guest)user;
-                    guest.addGuestToDB();
-                }
-
-                // create Request when ready to hire
+                //create Request when ready to hire
                 Bookings requests = new Bookings();
-                requests.makeRequest(user);
+                requests.makeRequest(this);
             }
-        }
-        else {
+        } else {
             System.out.println("Sorry No Partners found for Your Request ! ");
         }
-    }
-
-    public String mapToCities(HashMap<Integer,String> mapCities,int index)
-    {
-        return mapCities.get(index);
-    }
-
-    public String mapToServices(HashMap<Integer,String> mapServices,int index)
-    {
-        return mapServices.get(index);
     }
 
     public boolean readyToHire() {
@@ -169,9 +137,9 @@ public abstract class Consumer implements EndUser {
             return false;
     }
 
-    private boolean getPartnersFromDB(String serviceCategory, String city) {
-        String parseQuery = "select *from Partners where ServiceCategory = ? and City = ?";
-        boolean resultSetExist = true;
+    private boolean getPartnersFromDB(String profession, String city) {
+        String parseQuery = "select *from Partners where Profession = ? and City = ?";
+        boolean resultSetExist   = true;
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -180,7 +148,7 @@ public abstract class Consumer implements EndUser {
         try {
             connection = SQLiteConnection.connectDB();
             preparedStatement = connection.prepareStatement(parseQuery);
-            preparedStatement.setString(1, serviceCategory);
+            preparedStatement.setString(1, profession);
             preparedStatement.setString(2, city);
 
             resultSet = preparedStatement.executeQuery();
@@ -188,13 +156,13 @@ public abstract class Consumer implements EndUser {
             if (resultSet.next() == false)
                 resultSetExist = false;
             else {
-                System.out.println("---------------------------------------------------------------------------------------------------------------------------------------------");
-                System.out.println(" PartnerID              PartnerName         ContactNo                     Profession               ExperienceServing      AverageRating");
-                System.out.println("---------------------------------------------------------------------------------------------------------------------------------------------");
+                System.out.println("------------------------------------------------------------------------------------------------------");
+                System.out.println(" PartnerID                 PartnerName        ContactNo          ExperienceServing      AverageRating");
+                System.out.println("------------------------------------------------------------------------------------------------------");
                 do {
-                    System.out.printf("%10s  %25s      %10s     %30s                 %d                    %3.1f\n", resultSet.getString("PartnerID"), resultSet.getString("Name"), resultSet.getString("ContactNo"),resultSet.getString("Profession"), resultSet.getInt("ExperienceServing"), resultSet.getDouble("AverageRating"));
+                    System.out.printf("%10s    %25s      %10s               %d                    %3.1f\n",resultSet.getString("PartnerID"),resultSet.getString("Name"),resultSet.getString("ContactNo"),resultSet.getInt("ExperienceServing"),resultSet.getDouble("AverageRating"));
                 } while (resultSet.next());
-                System.out.println("---------------------------------------------------------------------------------------------------------------------------------------------");
+                System.out.println("------------------------------------------------------------------------------------------------------");
 
                 System.out.println();
             }
@@ -212,98 +180,86 @@ public abstract class Consumer implements EndUser {
         return resultSetExist;
     }
 
-    public HashMap<Integer,String> fetchCitiesFromDB()
-    {
-        String parseQuery = "select City from Partners";
-        Connection connection = SQLiteConnection.connectDB();
-        ResultSet resultSet = null;
+    private String keyCityMap(int key) {
+        HashMap<Integer, String> cityMap = new HashMap<Integer, String>();
 
-        HashSet<String> setCities = new HashSet<String>();
-        try
-        {
-            Statement statement = connection.createStatement();
-            resultSet = statement.executeQuery(parseQuery);
+        cityMap.put(1, "Pondicherry");
+        cityMap.put(2, "Chennai");
+        cityMap.put(3, "Bangalore");
+        cityMap.put(4, "Hyderabad");
+        cityMap.put(5, "Mumbai");
+        cityMap.put(6, "Calcutta");
+        cityMap.put(7, "Delhi");
 
-            while(resultSet.next())
-            {
-                setCities.add(resultSet.getString("City"));
-            }
-        }
-        catch(Exception e)
-        {
-            System.out.println(e.getMessage());
-        }
-        finally {
-            try
-            {
-                connection.close();
-            }
-            catch(Exception e)
-            {
-                System.out.println(e.getMessage());
-            }
-        }
+        return cityMap.get(key);
+    }
 
-        HashMap<Integer,String> citiesMap = new HashMap<Integer,String>();
-        int index=0;
+    private String keyServiceMap(int key) {
+        HashMap<Integer, String> serviceMap = new HashMap<Integer, String>();
 
-        for(String str : setCities)
-            citiesMap.put(++index,str);
+        serviceMap.put(1, "Beauty & Spa");
+        serviceMap.put(2, "Computer & Appliance Repairs");
+        serviceMap.put(3, "Weddings & Events");
+        serviceMap.put(4, "Health & Fitness");
+        serviceMap.put(5, "Tutors & Lessons");
 
-        for(int i=1;i<=citiesMap.size();i++)
-            System.out.println(i+" -> "+citiesMap.get(i));
-
-        return citiesMap;
+        return serviceMap.get(key);
 
     }
 
-    public HashMap<Integer,String> fetchServiceTypesFromDB()
-    {
-        String parseQuery = "select ServiceCategory from Partners";
-        Connection connection = SQLiteConnection.connectDB();
-        ResultSet resultSet = null;
-
-        HashSet<String> setServices = new HashSet<String>();
-        try
-        {
-            Statement statement = connection.createStatement();
-            resultSet = statement.executeQuery(parseQuery);
-
-            while(resultSet.next())
-            {
-                setServices.add(resultSet.getString("ServiceCategory"));
-            }
-        }
-        catch(Exception e)
-        {
-            System.out.println(e.getMessage());
-        }
-        finally {
-            try
-            {
-                connection.close();
-            }
-            catch(Exception e)
-            {
-                System.out.println(e.getMessage());
-            }
-        }
-
-        HashMap<Integer,String> servicesMap = new HashMap<Integer,String>();
-        int index=0;
-
-        for(String str : setServices)
-            servicesMap.put(++index,str);
-
-        for(int i=1;i<=servicesMap.size();i++)
-            System.out.println(i+" -> "+servicesMap.get(i));
-
-        return servicesMap;
+    private void listCitiesOffered() {
+        System.out.println("1 -> Pondicherry   2 -> Chennai   3 -> Bangalore ");
+        System.out.println("4 -> Hyderabad     5 -> Mumbai    6 -> Calcutta ");
+        System.out.println("7 -> Delhi");
     }
 
-    public boolean readyToUpdateRequest() {
+    private void listServicesOffered() {
+        System.out.println("1 -> Beauty & Spa");
+        System.out.println("2 -> Computer & Appliance Repair");
+        System.out.println("3 -> Weddings & Events");
+        System.out.println("4 -> Health & Fitness");
+        System.out.println("5 -> Tutors & Lessons");
+    }
+
+    public void viewBookings() {
         Scanner in = new Scanner(System.in);
-        int option;
+        int option = 0;
+
+        do {
+            System.out.println("1 -> ONGOING REQUESTS");
+            System.out.println("2 -> HISTORY ");
+            System.out.println("3 -> BACK TO DASHBOARD ");
+
+            System.out.print("Enter Option : ");
+            option = in.nextInt();
+
+            if (option == 1)
+                listOngoingRequests();
+
+            if (option == 2)
+                listBookingHistory();
+
+            if (option == 3)
+                System.out.println("Invalid Choice !");
+
+        } while (option != 3);
+
+    }
+
+    private void listOngoingRequests() {
+        boolean requestsFound = new Bookings().getOngoingRequests(clientID);
+
+        if (requestsFound) {
+            if (readyToUpdateRequest())
+                updateRequest();
+        } else {
+            System.out.println("No Ongoing Requests for You !");
+        }
+    }
+
+    private boolean readyToUpdateRequest() {
+        Scanner in = new Scanner(System.in);
+        int option = 0;
 
         System.out.print("Ready to update request ? ");
         System.out.println("1. Yes        2. No");
@@ -318,7 +274,7 @@ public abstract class Consumer implements EndUser {
 
     public void updateRequest() {
         Scanner in = new Scanner(System.in);
-        int option;
+        int option = 0;
         String requestID = null;
 
         System.out.println("Update Your Request :");
@@ -340,37 +296,9 @@ public abstract class Consumer implements EndUser {
         }
     }
 
-    public void loadDashboard() {
-        Scanner in = new Scanner(System.in);
+    private void listBookingHistory() {
+        new Bookings().getBookingHistory(clientID);
 
-        int choice;
 
-        do {
-            System.out.println("1 -> SEARCH FOR SERVICES");
-            System.out.println("2 -> VIEW BOOKING INFO");
-            System.out.println("3 -> GO BACK TO MAIN");
 
-            System.out.printf("\n Enter Your Choice : ");
-            choice = in.nextInt();
-
-            if (choice == 1)
-                searchForServices(this);
-
-            if (choice == 2)
-                viewBookingInfo();
-
-        } while (choice != 3);
     }
-
-    public void listOngoingRequests() {
-        boolean requestsFound = new Bookings().getOngoingRequests(this);
-
-        if (requestsFound) {
-            if (readyToUpdateRequest())
-                updateRequest();
-        }
-        else {
-            System.out.println("No Ongoing Requests for You !");
-        }
-    }
-}
