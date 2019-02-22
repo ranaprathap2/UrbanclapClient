@@ -16,10 +16,8 @@ public class DateUtils {
         Date validFromDate = new Date(dateOfRequest.getTime() + reqHoursInMillis);
 
         if(dateOfBooking.compareTo(validFromDate)>=0)
-        {
-            System.out.println("Booking Validated ! Our UC Partner will reach out to you soon .");
             return true;
-        }
+
         else if(dateOfBooking.compareTo(dateOfRequest)<0)
             System.out.println("Sorry, Booking on previous Date and Time is Invalid ! Retry");
         else

@@ -9,7 +9,7 @@ public class SQLiteConnection {
         try
         {
             Class.forName("org.sqlite.JDBC");
-            c = DriverManager.getConnection("jdbc:sqlite:C:/SQLite/UrbanClap.db");
+            c = DriverManager.getConnection("jdbc:sqlite:/Users/rana-pt2631/SQLite/UrbanClap.db");
         }
         catch (Exception e)
         {
