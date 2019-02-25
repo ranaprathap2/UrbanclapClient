@@ -37,12 +37,12 @@ public abstract class Consumer implements EndUser {
 
         if(this instanceof Client)
         {
-           newID = "CL-" + generateUserID("select count(ClientID)+1 from Clients");
+           newID = "CL-" + generateUserID("select count(ConsumerID)+1 from Consumers where ConsumerID like 'CL-%'");
         }
 
         if(this instanceof Guest)
         {
-            newID = "GU-" + generateUserID("select count(GuestID)+1 from Guests");
+            newID = "GU-" + generateUserID("select count(ConsumerID)+1 from Consumers where ConsumerID like 'GU-%'");
         }
 
         return newID;
@@ -63,7 +63,7 @@ public abstract class Consumer implements EndUser {
                 String clientID = getUserID();
                 client.setClientID(clientID);
 
-                sql = "INSERT INTO Clients VALUES(?,?,?,?,?)";
+                sql = "INSERT INTO Consumers VALUES(?,?,?,?,?)";
                 pstmt = connection.prepareStatement(sql);
                 pstmt.setString(1,clientID);
                 pstmt.setString(2,client.getClientName());
@@ -78,7 +78,7 @@ public abstract class Consumer implements EndUser {
                 String guestID = getUserID();
                 guest.setGuestID(guestID);
 
-                sql = "INSERT INTO Guests VALUES(?,?,?,?)";
+                sql = "INSERT INTO Consumers (ConsumerID,Name,ContactNo,eMail) VALUES(?,?,?,?)";
                 pstmt = connection.prepareStatement(sql);
                 pstmt.setString(1,guest.getGuestID());
                 pstmt.setString(2,guest.getGuestName());

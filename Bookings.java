@@ -10,7 +10,7 @@ import java.text.SimpleDateFormat;
 public class Bookings {
 
     private String requestID;
-    private String clientID;
+    private String consumerID;
     private String partnerID;
     private Date  dateOfRequest;
     private Date dateOfBooking;
@@ -20,7 +20,7 @@ public class Bookings {
     Bookings()
     {
         requestID="";
-        clientID="";
+        consumerID="";
         partnerID="";
         dateOfRequest = new Date();
         dateOfBooking = new Date();
@@ -41,13 +41,13 @@ public class Bookings {
         if(consumer instanceof Client)
         {
             Client client = (Client)consumer;
-            clientID = client.getClientID();
+            consumerID = client.getClientID();
         }
 
         if(consumer instanceof Guest)
         {
             Guest guest = (Guest)consumer;
-            clientID = guest.getGuestID();
+            consumerID = guest.getGuestID();
         }
 
         do {
@@ -69,7 +69,7 @@ public class Bookings {
                 System.out.println(e.getMessage());
             }
 
-        }while(!validateBooking(clientID,partnerID,dateOfRequest,dateOfBooking));
+        }while(!validateBooking(consumerID,partnerID,dateOfRequest,dateOfBooking));
 
         saveRequestToDB();
     }
@@ -77,7 +77,7 @@ public class Bookings {
     public void saveRequestToDB()
     {
         SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-        String sql = "INSERT INTO Bookings(RequestID,ClientID,PartnerID,DateOfRequest,DateOfBooking,Status) VALUES(?,?,?,?,?,?)";
+        String sql = "INSERT INTO Bookings(RequestID,ConsumerID,PartnerID,DateOfRequest,DateOfBooking,Status) VALUES(?,?,?,?,?,?)";
 
             try
             {
@@ -85,7 +85,7 @@ public class Bookings {
 
                 PreparedStatement pstmt = connection.prepareStatement(sql);
                 pstmt.setString(1, requestID);
-                pstmt.setString(2, clientID);
+                pstmt.setString(2, consumerID);
                 pstmt.setString(3, partnerID);
                 pstmt.setString(4, pattern.format(dateOfRequest));
                 pstmt.setString(5, pattern.format(dateOfBooking));
@@ -143,7 +143,7 @@ public class Bookings {
         {
             String userID = null;
 
-            parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID AND Bookings.Status='Unprocessed' AND Bookings.ClientID=?";
+            parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID AND Bookings.Status='Unprocessed' AND Bookings.ConsumerID=?";
 
             if(consumer instanceof Client)
             {
@@ -192,10 +192,10 @@ public class Bookings {
                 System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
                 System.out.println();
-                connection.close();
-
 
             }
+
+            connection.close();
         }
         catch(Exception e)
         {
@@ -352,7 +352,7 @@ public class Bookings {
 
     public boolean getBookingHistory(String clientID)
     {
-        String parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking,Bookings.Status,Bookings.Rating from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID where Bookings.ClientID=?";
+        String parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking,Bookings.Status,Bookings.Rating from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID where Bookings.ConsumerID=?";
         boolean resultSetExist=true;
 
         try
@@ -393,7 +393,7 @@ public class Bookings {
 
     private String getGuestDetailsFromMail(String mail)
     {
-        String parseQuery="select GuestID from Guests where eMail=?";
+        String parseQuery="select ConsumerID from Consumers where eMail=?";
         String guestID = null;
 
         try
@@ -405,7 +405,7 @@ public class Bookings {
             ResultSet resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()!=false)
-                guestID=resultSet.getString("GuestID");
+                guestID=resultSet.getString("ConsumerID");
 
             connection.close();
         }
@@ -442,7 +442,7 @@ public class Bookings {
 
             while (resultSet.next()) {
 
-                String consumerIDfromDB = resultSet.getString("ClientID");
+                String consumerIDfromDB = resultSet.getString("ConsumerID");
                 String bookingDateinDB = resultSet.getString("DateOfBooking");
                 bookingDateAsDate = pattern.parse(bookingDateinDB);
 

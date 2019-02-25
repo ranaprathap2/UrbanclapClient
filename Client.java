@@ -49,7 +49,7 @@ public class Client extends Consumer {
 
         boolean resultSetExists = true;
 
-        String passQuery = "select *from Clients where eMail=?";
+        String passQuery = "select *from Consumers where eMail=?";
 
         try
         {
@@ -78,24 +78,28 @@ public class Client extends Consumer {
             System.out.println(e.getMessage());
         }
 
-        if(resultSetExists == false)
+        if(!resultSetExists)
         {
             System.out.println("Invalid Login Credentials !");
             return false;
         }
         else
         {
-            System.out.println("-------------------------------------------");
-            System.out.println("Logged in as Client , Your ClientID :"+getClientID());
-            System.out.println("Welcome "+getClientName()+" !");
-            System.out.println("-------------------------------------------");
-            System.out.println();
+            if (PasswordUtils.checkPasswordWithHash(password,dbPassword))
+            {
+                System.out.println("-------------------------------------------");
+                System.out.println("Logged in as Client , Your ClientID :"+getClientID());
+                System.out.println("Welcome "+getClientName()+" !");
+                System.out.println("-------------------------------------------");
+                System.out.println();
+
+                return true;
+            }
+            else
+                System.out.println("Password Incorrect !");
         }
 
-        if (PasswordUtils.checkPasswordWithHash(password,dbPassword))
-            return true;
-        else
-            return false;
+        return false;
     }
 
     public void registerClient() {
@@ -118,7 +122,15 @@ public class Client extends Consumer {
             System.out.println("Confirm Your Password : ");
             confirmPassword = in.next();
 
-        } while (!PasswordUtils.validate(password, confirmPassword));
+            if(!PasswordUtils.validate(password, confirmPassword))
+            {
+                System.out.println("Password Mismatch Enter Again !");
+                continue;
+            }
+            else
+                break;
+
+        } while (true);
 
         clientID = getUserID();
         saveUserToDB();
