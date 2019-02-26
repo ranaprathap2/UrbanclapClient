@@ -1,5 +1,7 @@
-import java.sql.*;
-import java.util.*;
+import java.util.Scanner;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class Client extends Consumer {
 
