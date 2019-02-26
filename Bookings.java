@@ -478,6 +478,11 @@ public class Bookings {
             System.out.println(e.getMessage());
         }
 
+        return bookingStatus(alreadyBooked,slotAvailable,bookingDateAsDate,slotStartTime,slotEndTime);
+    }
+
+    private Boolean bookingStatus(Boolean alreadyBooked,Boolean slotAvailable,Date bookingDateAsDate,Date slotStartTime,Date slotEndTime)
+    {
         // check if already booked by someone else
         if (alreadyBooked && !slotAvailable) {
 
