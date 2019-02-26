@@ -60,7 +60,7 @@ public class Main {
                 }
             }
 
-            // Load ClientRegistration Wizard
+            // Load Client Registration Wizard
             if(choice == 2)
                 new Client().registerClient();
 

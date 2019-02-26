@@ -11,7 +11,7 @@ public class DateUtils {
 
         SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
-        //advance date to an hour
+        // advance date to an hour
         final long reqHoursInMillis = 1*60*60*1000; //one hour in millis
         Date validFromDate = new Date(dateOfRequest.getTime() + reqHoursInMillis);
 
