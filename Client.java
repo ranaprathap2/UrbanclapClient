@@ -104,6 +104,34 @@ public class Client extends Consumer {
         return false;
     }
 
+    public boolean verifyMail(String mail)
+    {
+        String parseQuery = "select *from Consumers where eMail=? AND ConsumerID like 'CL-%'";
+        Boolean mailAlreadyExist = false;
+
+        try
+        {
+            Connection connection = SQLiteConnection.connectDB();
+            PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
+            preparedStatement.setString(1,mail);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            if(resultSet.next()!=false)
+            {
+                mailAlreadyExist = true;
+            }
+
+            connection.close();
+        }
+        catch(Exception e)
+        {
+            System.out.println(e.getMessage());
+        }
+
+        return mailAlreadyExist;
+    }
+
     public void registerClient() {
         Scanner in = new Scanner(System.in);
         String confirmPassword;
@@ -114,8 +142,15 @@ public class Client extends Consumer {
         System.out.println("Enter Your ContactNo : ");
         contactNo = in.nextLine();
 
-        System.out.println("Enter Your eMail ID: ");
-        eMailID = in.nextLine();
+        do {
+            System.out.println("Enter Your eMail ID: ");
+            eMailID = in.nextLine();
+
+            if(verifyMail(eMailID))
+                System.out.println("The eMail ID you have entered already exist !, Try an alternate eMail ID");
+            else
+                break;
+        }while(true);
 
         do {
             System.out.println("Choose Your Password : ");
