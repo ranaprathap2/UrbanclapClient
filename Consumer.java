@@ -92,7 +92,7 @@ public abstract class Consumer implements EndUser {
         }
         catch (Exception e)
         {
-            System.out.println(e);
+            System.out.println("Check in saveUserToDB : "+e);
         }
     }
 
@@ -103,19 +103,53 @@ public abstract class Consumer implements EndUser {
         System.out.println("LIST OF CITIES : ");
         HashMap<Integer, String> mapCities= fetchCitiesFromDB();
 
-        System.out.printf("\nChoose Your City  : ");
-        city = in.nextInt();
+        do
+        {
+            System.out.printf("\nChoose Your City  : ");
+            if(in.hasNextInt())
+            {
+                city = in.nextInt();
 
+                if(city>0 && city<=mapCities.size())
+                    break;
+                else
+                    System.out.println("Invalid Input, Enter Again !");
+            }
+            else
+            {
+                System.out.println("Input Mismatch Enter an Integer Value from the Above ResultSet");
+                in.next();
+            }
+
+        }while(true);
 
         System.out.println("LIST OF SERVICE CATEGORIES : ");
         HashMap<Integer, String> mapServices= fetchServiceTypesFromDB();
 
-        System.out.printf("\nPick One : ");
-        serviceCategory = in.nextInt();
+        do
+        {
+            System.out.printf("\nPick One : ");
+
+            if(in.hasNextInt())
+            {
+                serviceCategory = in.nextInt();
+
+                if(serviceCategory>0 && serviceCategory<=mapServices.size())
+                    break;
+                else
+                    System.out.println("Invalid Input, Enter Again !");
+            }
+            else
+            {
+                System.out.println("Input Mismatch Enter an Integer Value from the Above ResultSet");
+                in.next();
+            }
+        }while(true);
 
         System.out.println();
 
-        boolean partnersFound = getPartnersFromDB(mapToServices(mapServices,serviceCategory), mapToCities(mapCities,city));
+        Boolean partnersFound = getPartnersFromDB(mapToServices(mapServices,serviceCategory), mapToCities(mapCities,city));
+
 
         if (partnersFound) {
             if (readyToHire()) {
@@ -128,7 +162,7 @@ public abstract class Consumer implements EndUser {
 
                 // create Request when ready to hire
                 Bookings requests = new Bookings();
-                requests.makeRequest(this);
+                requests.makeRequest(this,mapToCities(mapCities,city),mapToServices(mapServices,serviceCategory));
             }
         }
         else {
@@ -147,23 +181,40 @@ public abstract class Consumer implements EndUser {
     }
 
     public boolean readyToHire() {
-        int interest;
+        int interest=0;
         Scanner in = new Scanner(System.in);
 
-        System.out.print("Interested to Hire ? ");
-        System.out.println("1.Yes    2.No ");
+        do
+        {
+            System.out.print("Interested to Hire ? ");
+            System.out.println("1.Yes    2.No ");
 
-        interest = in.nextInt();
+            if(in.hasNextInt())
+            {
+                interest = in.nextInt();
+                if(interest==1 || interest==2)
+                    break;
+                else
+                    System.out.println("Invalid Choice ! Enter an Integer from the Options.");
+            }
+            else
+            {
+                System.out.println("Input Mismatch ! Enter an Integer value .");
+                in.next();
+            }
+
+        }while(true);
 
         if (interest == 1)
             return true;
         else
             return false;
+
     }
 
-    private boolean getPartnersFromDB(String serviceCategory, String city) {
+    private Boolean getPartnersFromDB(String serviceCategory, String city) {
         String parseQuery = "select *from Partners where ServiceCategory = ? and City = ?";
-        boolean resultSetExist = true;
+        Boolean resultSetExist = true;
 
         Connection connection = SQLiteConnection.connectDB();
 
@@ -174,7 +225,7 @@ public abstract class Consumer implements EndUser {
 
             ResultSet resultSet = preparedStatement.executeQuery();
 
-            if (resultSet.next() == false)
+            if (!resultSet.next())
                 resultSetExist = false;
             else {
                 System.out.println("---------------------------------------------------------------------------------------------------------------------------------------------");
@@ -195,6 +246,7 @@ public abstract class Consumer implements EndUser {
 
         return resultSetExist;
     }
+
 
     public HashMap<Integer,String> fetchCitiesFromDB()
     {
@@ -267,12 +319,27 @@ public abstract class Consumer implements EndUser {
 
     public boolean readyToUpdateRequest() {
         Scanner in = new Scanner(System.in);
-        int option;
+        int option=0;
+        do
+        {
+            System.out.print("Ready to update request ? ");
+            System.out.println("1. Yes        2. No");
 
-        System.out.print("Ready to update request ? ");
-        System.out.println("1. Yes        2. No");
+            if(in.hasNextInt())
+            {
+                option = in.nextInt();
+                if(option==1 || option==2)
+                    break;
+                else
+                    System.out.println("Invalid Choice ! Enter an integer from the Options.");
+            }
+            else
+            {
+                System.out.println("Input Mismatch ! Enter an Integer value .");
+                in.next();
+            }
 
-        option = in.nextInt();
+        }while(true);
 
         if (option == 1)
             return true;
@@ -280,31 +347,120 @@ public abstract class Consumer implements EndUser {
             return false;
     }
 
+    private boolean verifyRequestID(String consumerID,String requestID)
+    {
+        try
+        {
+            Connection connection = SQLiteConnection.connectDB();
+
+            String parseQuery = "select RequestID from Bookings where ConsumerID=? AND Status='Unprocessed'";
+            PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
+            preparedStatement.setString(1,consumerID);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+
+            while(resultSet.next())
+            {
+                if(resultSet.getString("RequestID").equals(requestID))
+                {
+                    // If partner is verified close the connection and return true
+                    connection.close();
+                    return true;
+                }
+            }
+            // Close the connection when the partner is not found and proceed to statements after catch
+            connection.close();
+        }
+        catch (Exception e)
+        {
+            System.out.println(e);
+        }
+
+        System.out.println("Invalid Request ID, Choose a RequestID from the ResultSet !");
+        return false;
+    }
+
     public void updateRequest() {
         Scanner in = new Scanner(System.in);
         int option;
+
         String requestID = null;
+        String consumerID = null;
 
         System.out.println("Update Your Request :");
-        System.out.println("Enter Your Request ID : ");
-        requestID = in.next();
 
-        System.out.print("Enter your option 1. Processed 2. Cancelled: ");
-        option = in.nextInt();
+        do {
+            System.out.println("Enter Your Request ID : ");
+            requestID = in.next().toUpperCase();
+
+            if(this instanceof Client)
+            {
+                Client client = (Client)this;
+                consumerID = client.getClientID();
+            }
+            else if(this instanceof Guest)
+            {
+                Guest guest = (Guest)this;
+                consumerID = guest.getGuestID();
+            }
+
+            if(verifyRequestID(consumerID,requestID))
+                break;
+
+        }while(true);
+
+        do {
+            System.out.print("Enter your option 1. Processed 2. Cancelled: ");
+            if(in.hasNextInt())
+            {
+                option = in.nextInt();
+                if(option==1 || option==2)
+                    break;
+                else
+                    System.out.println("Invalid Choice ! Enter a Valid Option .");
+            }
+            else
+            {
+                System.out.println("Input Mismatch ! Enter an Integer Value.");
+                in.next();
+            }
+
+        }while(true);
+
 
         Bookings bookings = new Bookings();
         bookings.updateBookingRequest(option, requestID);
 
         if (option == 1) {
+            int rating = 1;
             System.out.println("Update Rating for the Service (1 to 5): ");
-            int rating = in.nextInt();
+
+            do {
+                if(in.hasNextInt())
+                {
+                    rating = in.nextInt();
+
+                    if(rating>0 && rating<6)
+                        break;
+                    else
+                        System.out.println("Invalid Rating , Input a Rating Value b/w 1 and 5");
+                }
+                else
+                {
+                    System.out.println("Input Mismatch , Enter an Integer Value from 1 to 5 !");
+                    in.next();
+                }
+
+            }while(true);
+
             bookings.updateRatings(rating, requestID);
         }
     }
 
     public void loadDashboard() {
         Scanner in = new Scanner(System.in);
-        int choice;
+        int choice=0;
 
         do {
             System.out.println("1 -> SEARCH FOR SERVICES");
@@ -312,7 +468,23 @@ public abstract class Consumer implements EndUser {
             System.out.println("3 -> GO BACK TO MAIN");
 
             System.out.printf("\n Enter Your Choice : ");
-            choice = in.nextInt();
+
+            if(in.hasNextInt())
+            {
+                choice = in.nextInt();
+
+                if(!(choice>0 && choice<4))
+                {
+                    System.out.println("Invalid Choice !");
+                    continue;
+                }
+            }
+            else
+            {
+                System.out.println("Input Mismatch ! Enter a valid Integer from the Menu .");
+                in.next();
+                continue;
+            }
 
             if (choice == 1)
                 searchForServices();
@@ -321,18 +493,5 @@ public abstract class Consumer implements EndUser {
                 viewBookingInfo();
 
         } while (choice != 3);
-    }
-
-    public void listOngoingRequests() {
-        Bookings request = new Bookings();
-        boolean requestsFound = request.getOngoingRequests(this);
-
-        if (requestsFound) {
-            if (readyToUpdateRequest())
-                updateRequest();
-        }
-        else {
-            System.out.println("No Ongoing Requests for You !");
-        }
     }
 }

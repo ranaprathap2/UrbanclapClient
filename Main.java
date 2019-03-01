@@ -8,7 +8,7 @@ public class Main {
 
     public static void loadMainMenu()
     {
-        int choice; 
+        int choice=0;
         Scanner in = new Scanner(System.in);
 
         do
@@ -24,19 +24,60 @@ public class Main {
             System.out.println();
 
             System.out.printf("Enter Your Choice : \n");
-            choice = in.nextInt();
+
+            // Handling mismatch without try catch alternative and simple
+            if(in.hasNextInt())
+            {
+                choice = in.nextInt();
+
+                if(!(choice>0 && choice<4))
+                {
+                    System.out.printf("\n\nInvalid Choice !\n\n");
+                    continue;
+                }
+            }
+            else
+            {
+                System.out.println("Invalid input, Please Try Again !");
+                in.next();
+                System.out.println();
+                continue;
+            }
 
             if(choice == 1)
             {
                 int choose;
                 Scanner input = new Scanner(System.in);
 
-                System.out.println("-------------------------------------------");
-                System.out.printf("Choose Your Type of Login : \n\n1 -> CLIENT\n2 -> GUEST\n");
-                System.out.printf("------------------------------------------\n");
+                do {
+                    System.out.println("-------------------------------------------");
+                    System.out.printf("Choose Your Type of Login : \n\n1 -> CLIENT\n2 -> GUEST\n");
+                    System.out.printf("------------------------------------------\n");
 
-                System.out.print("Input Login Type : ");
-                choose = input.nextInt();
+                    System.out.print("Input Login Type : ");
+
+                    // Handling mismatch without try catch alternative and simple
+                    if(input.hasNextInt())
+                    {
+                        choose = input.nextInt();
+
+                        if((choose!=1 && choose!=2))
+                        {
+                            System.out.printf("\n\nInvalid Choice !\n\n");
+                            continue;
+                        }
+                        else
+                            break;
+                    }
+                    else
+                    {
+                        System.out.println("Invalid input, Please Try Again !");
+                        input.next();
+                        System.out.println();
+                        continue;
+                    }
+
+                }while(true);
 
                 System.out.println();
 

@@ -144,7 +144,7 @@ public class Client extends Consumer {
 
     public void viewBookingInfo() {
         Scanner in = new Scanner(System.in);
-        int option;
+        int option=0;
 
         do {
             System.out.println("1 -> ONGOING REQUESTS");
@@ -152,7 +152,23 @@ public class Client extends Consumer {
             System.out.println("3 -> BACK TO DASHBOARD ");
 
             System.out.print("Enter Option : ");
-            option = in.nextInt();
+
+            if(in.hasNextInt())
+            {
+                option = in.nextInt();
+
+                if(!(option>0 && option<4))
+                {
+                    System.out.println("Invalid Choice !");
+                    continue;
+                }
+            }
+            else
+            {
+                System.out.println("Input Mismatch ! Enter a valid Integer value.");
+                in.next();
+                continue;
+            }
 
             if (option == 1)
                 listOngoingRequests();
@@ -161,5 +177,18 @@ public class Client extends Consumer {
                 listBookingHistory();
 
         } while (option != 3);
+    }
+
+    public void listOngoingRequests() {
+        Bookings request = new Bookings();
+        boolean requestsFound = request.getOngoingRequests(this);
+
+        if (requestsFound) {
+            if (readyToUpdateRequest())
+                updateRequest();
+        }
+        else {
+            System.out.println("No Ongoing Requests for You !");
+        }
     }
 }

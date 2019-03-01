@@ -1,19 +1,16 @@
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 public class DateUtils {
 
-    public boolean validateHireDateAndTime(Date dateOfRequest,Date dateOfBooking)
+    public static boolean validateHireDateAndTime(LocalDateTime dateOfRequest,LocalDateTime dateOfBooking)
     {
         // booking on previous date and time from the current time is invalid
         // booking is possible for date and time after an hour from current request time
 
-        SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-
         // advance date to an hour
-        final long reqHoursInMillis = 1*60*60*1000; //one hour in millis
-        Date validFromDate = new Date(dateOfRequest.getTime() + reqHoursInMillis);
+        LocalDateTime validFromDate = dateOfRequest.plusHours(1);
 
         if(dateOfBooking.compareTo(validFromDate)>=0)
             return true;
@@ -22,8 +19,8 @@ public class DateUtils {
             System.out.println("Sorry, Booking on previous Date and Time is Invalid ! Retry");
         else
         {
-            long diffInMillies = Math.abs(validFromDate.getTime()-dateOfBooking.getTime());
-            long diff = TimeUnit.MINUTES.convert(diffInMillies,TimeUnit.MILLISECONDS);
+            long diffInMillies =  Duration.between(validFromDate,dateOfBooking).toMillis();
+            long diff = TimeUnit.MILLISECONDS.toMinutes(diffInMillies);
 
             if(diff>=60)
                 return true;
@@ -32,6 +29,4 @@ public class DateUtils {
         }
         return false;
     }
-
-
 }

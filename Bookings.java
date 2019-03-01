@@ -2,18 +2,20 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Scanner;
-import java.util.Date;
-import java.text.SimpleDateFormat;
 
 public class Bookings {
 
     private String requestID;
     private String consumerID;
     private String partnerID;
-    private Date  dateOfRequest;
-    private Date dateOfBooking;
+    LocalDateTime dateOfRequest;
+    LocalDateTime dateOfBooking;
+    //private Date  dateOfRequest;
+    //private Date dateOfBooking;
     private String status;
     private int rating;
 
@@ -22,21 +24,60 @@ public class Bookings {
         requestID="";
         consumerID="";
         partnerID="";
-        dateOfRequest = new Date();
-        dateOfBooking = new Date();
+        dateOfRequest = LocalDateTime.now();
+        dateOfBooking = null;
         status = "Unprocessed";
         rating = 0;
     }
 
-    public void makeRequest(Consumer consumer)
+    private boolean verifyPartnerID(String partnerID,String city, String serviceCategory)
+    {
+        try
+        {
+            Connection connection = SQLiteConnection.connectDB();
+            String parseQuery = "select PartnerID from Partners where City=? AND ServiceCategory=?";
+            PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
+            preparedStatement.setString(1,city);
+            preparedStatement.setString(2,serviceCategory);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            while(resultSet.next())
+            {
+                if(resultSet.getString("PartnerID").equals(partnerID))
+                {
+                    // If partner is verified close the connection and return true
+                    connection.close();
+                    return true;
+                }
+            }
+            // Close the connection when the partner is not found and proceed to statements after catch
+            connection.close();
+        }
+        catch (Exception e)
+        {
+            System.out.println(e);
+        }
+
+        System.out.println("Invalid Partner ID, Choose a PartnerID from the ResultSet !");
+        return false;
+    }
+
+    public void makeRequest(Consumer consumer,String city,String serviceCategory)
     {
         String bookingDateAsString=null;
         Scanner in = new Scanner(System.in);
 
         requestID = getRequestID();
 
-        System.out.println("Enter Partner ID : ");
-        partnerID = in.next();
+        do
+        {
+            System.out.println("Enter Partner ID : ");
+            partnerID = in.next().toUpperCase();
+            System.out.println(partnerID);
+
+        }while(!verifyPartnerID(partnerID,city,serviceCategory));
+
 
         if(consumer instanceof Client)
         {
@@ -51,33 +92,44 @@ public class Bookings {
         }
 
         do {
-            System.out.println("Enter Your Service Hiring Date yyyy-MM-dd : ");
+            System.out.println("Enter Your Service Hiring Date & Time yyyy-MM-dd  : ");
             String date = in.next();
 
             System.out.println("Enter Your Service Hiring Time HH:mm : ");
             String time = in.next();
 
             bookingDateAsString = date+" "+time;
-            SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            System.out.println("check : "+bookingDateAsString);
+
+            DateTimeFormatter pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
             try
             {
-                System.out.println(bookingDateAsString);
-                dateOfBooking = pattern.parse(bookingDateAsString);
+                dateOfBooking = LocalDateTime.parse(bookingDateAsString,pattern);
             }
             catch(Exception e)
             {
                 System.out.println(e.getMessage());
+                System.out.println("Enter a valid Date !");
+                continue ;
             }
 
-        }while(!validateBooking(consumerID,partnerID,dateOfRequest,dateOfBooking));
+            System.out.println("Your Hiring Date & Time : "+dateOfBooking.format(pattern));
+
+            if(validateBooking(consumerID,partnerID,dateOfRequest,dateOfBooking))
+                break;
+
+        }while(true);
 
         saveRequestToDB();
     }
 
     public void saveRequestToDB()
     {
-        SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        //SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         String sql = "INSERT INTO Bookings(RequestID,ConsumerID,PartnerID,DateOfRequest,DateOfBooking,Status) VALUES(?,?,?,?,?,?)";
+
+        DateTimeFormatter pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
             try
             {
@@ -91,7 +143,7 @@ public class Bookings {
                 pstmt.setString(5, pattern.format(dateOfBooking));
                 pstmt.setString(6, status );
 
-                pstmt.executeUpdate();
+                pstmt.execute();
 
                 System.out.println("Request Successful !");
 
@@ -99,7 +151,7 @@ public class Bookings {
             }
             catch(Exception e)
             {
-                System.out.println(e);
+                System.out.println("Check in save Request to DB :"+e);
             }
     }
 
@@ -134,6 +186,7 @@ public class Bookings {
         return newID;
     }
 
+
     public boolean getOngoingRequests(Consumer consumer)
     {
         boolean resultSetExist=true;
@@ -156,21 +209,6 @@ public class Bookings {
                 System.out.println();
             }
 
-            else if(consumer instanceof Guest)
-            {
-                Scanner in = new Scanner(System.in);
-
-                System.out.println("Enter Your Mail ID : ");
-                String mail = in.next();
-
-                userID = getGuestDetailsFromMail(mail);
-
-                if(userID != null)
-                    System.out.println("Ongoing Request for GuestID = "+userID);
-                else
-                    System.out.println("Invalid Guest !");
-
-            }
 
             Connection connection = SQLiteConnection.connectDB();
             PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
@@ -350,16 +388,18 @@ public class Bookings {
         return partnerID;
     }
 
-    public boolean getBookingHistory(String clientID)
+
+    public boolean getBookingHistory(String consumerID)
     {
-        String parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking,Bookings.Status,Bookings.Rating from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID where Bookings.ConsumerID=?";
         boolean resultSetExist=true;
 
         try
         {
             Connection connection = SQLiteConnection.connectDB();
-            PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
-            preparedStatement.setString(1,clientID);
+
+                String parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking,Bookings.Status,Bookings.Rating from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID where Bookings.ConsumerID=?";
+                PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
+                preparedStatement.setString(1,consumerID);
 
             ResultSet resultSet = preparedStatement.executeQuery();
 
@@ -374,7 +414,6 @@ public class Bookings {
                 do {
                     //System.out.println(resultSet.getString("RequestID") +"              "+ resultSet.getString("PartnerID")+"                     "+resultSet.getString("Name")+"                   "+resultSet.getString("Profession")+"           "+resultSet.getString("ContactNo")+"           "+resultSet.getString("DateOfRequest")+"            "+resultSet.getString("DateOfBooking")+"            "+resultSet.getString("Status")+"           "+resultSet.getInt("Rating"));
                     System.out.printf("%8s    %10s    %25s         %30s     %10s      %18s    %18s   %12s                %d \n",resultSet.getString("RequestID"),resultSet.getString("PartnerID"),resultSet.getString("Name"),resultSet.getString("Profession"),resultSet.getString("ContactNo"),resultSet.getString("DateOfRequest"),resultSet.getString("DateOfBooking"),resultSet.getString("Status"),resultSet.getInt("Rating"));
-
 
                 }while(resultSet.next());
 
@@ -391,46 +430,22 @@ public class Bookings {
         return resultSetExist;
     }
 
-    private String getGuestDetailsFromMail(String mail)
-    {
-        String parseQuery="select ConsumerID from Consumers where eMail=?";
-        String guestID = null;
 
-        try
-        {
-            Connection connection = SQLiteConnection.connectDB();
-            PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
-            preparedStatement.setString(1,mail);
-
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            if(resultSet.next()!=false)
-                guestID=resultSet.getString("ConsumerID");
-
-            connection.close();
-        }
-        catch(Exception e)
-        {
-            System.out.println(e.getMessage());
-        }
-
-        return guestID;
-    }
-
-    public boolean validateBooking(String clientID,String partnerID,Date dateOfRequest,Date dateOfBooking) {
+    private boolean validateBooking(String clientID,String partnerID,LocalDateTime dateOfRequest,LocalDateTime dateOfBooking) {
 
         // check if booking date and time are valid
-        if(!new DateUtils().validateHireDateAndTime(dateOfRequest,dateOfBooking))
+        if(!DateUtils.validateHireDateAndTime(dateOfRequest,dateOfBooking))
             return false;
 
         String parseQuery = "select *from Bookings where PartnerID=? AND Status='Unprocessed'";
 
         boolean alreadyBooked = false;
         boolean slotAvailable = true;
+        boolean afterBeforeTimeSlot = true;
 
-        Date bookingDateAsDate = null;
-        Date slotStartTime = null;
-        Date slotEndTime = null;
+        LocalDateTime bookingDateAsDate = null;
+        LocalDateTime slotStartTime = null;
+        LocalDateTime slotEndTime = null;
 
         try {
             Connection connection = SQLiteConnection.connectDB();
@@ -438,23 +453,21 @@ public class Bookings {
             preparedStatement.setString(1, partnerID);
 
             ResultSet resultSet = preparedStatement.executeQuery();
-            SimpleDateFormat pattern = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+            DateTimeFormatter pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
             while (resultSet.next()) {
 
                 String consumerIDfromDB = resultSet.getString("ConsumerID");
                 String bookingDateinDB = resultSet.getString("DateOfBooking");
-                bookingDateAsDate = pattern.parse(bookingDateinDB);
+                bookingDateAsDate =LocalDateTime.parse(bookingDateinDB,pattern);
 
-                // Assuming time slot for service be 90 minutes
-                long millis = 90 * 60 * 1000; // 90 minutes in milliseconds
-
+                // Assuming time slot for service be 90 minute
                 slotStartTime = bookingDateAsDate;
-                slotEndTime = new Date(slotStartTime.getTime()+millis);
+                slotEndTime = slotStartTime.plusMinutes(90) ;
 
                 // check for booking in the time slot
-                //if(slotStartTime.compareTo(dateOfBooking)>=0 && slotEndTime.compareTo(dateOfBooking)<=0)
-                if(!dateOfBooking.before(slotStartTime) && !dateOfBooking.after(slotEndTime))
+                if(!dateOfBooking.isBefore(slotStartTime) && !dateOfBooking.isAfter(slotEndTime))
                 {
                     // Already booked by the hiring client
                     if (consumerIDfromDB.equals(clientID))
@@ -471,23 +484,32 @@ public class Bookings {
                         }
                     }
                 }
+
+                // An hour before or after the time slot
+                //else if(dateOfBooking.isBefore(slotStartTime.minusHours(1)) || dateOfBooking.isAfter(slotEndTime.plusHours(1)))
+                else if((!dateOfBooking.isBefore(slotStartTime.minusMinutes(60)) && !dateOfBooking.isAfter(slotStartTime) || (!dateOfBooking.isBefore(slotEndTime) && !dateOfBooking.isAfter(slotEndTime.plusMinutes(60)))))
+                {
+                    afterBeforeTimeSlot = false;
+                }
             }
+
+            preparedStatement.close();
             connection.close();
         }
         catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.println("Check in validateBooking: "+e.getMessage());
         }
 
-        return bookingStatus(alreadyBooked,slotAvailable,bookingDateAsDate,slotStartTime,slotEndTime);
+        return bookingStatus(alreadyBooked,slotAvailable,afterBeforeTimeSlot,bookingDateAsDate,slotStartTime,slotEndTime);
     }
 
-    private Boolean bookingStatus(Boolean alreadyBooked,Boolean slotAvailable,Date bookingDateAsDate,Date slotStartTime,Date slotEndTime)
+    private Boolean bookingStatus(Boolean alreadyBooked,Boolean slotAvailable,Boolean afterBeforeTimeSlot,LocalDateTime bookingDateAsDate,LocalDateTime slotStartTime,LocalDateTime slotEndTime)
     {
         // check if already booked by someone else
         if (alreadyBooked && !slotAvailable) {
 
-            SimpleDateFormat date = new SimpleDateFormat("yyyy-MM-dd");
-            SimpleDateFormat time = new SimpleDateFormat("HH:mm");
+            DateTimeFormatter date = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            DateTimeFormatter time = DateTimeFormatter.ofPattern("HH:mm");
 
             System.out.println("The Partner is booked by another client for the time slot !");
             System.out.println("Date: "+date.format(bookingDateAsDate)+"      From: " +time.format(slotStartTime) + "    To: "+time.format(slotEndTime) );
@@ -499,6 +521,13 @@ public class Bookings {
         // check if already booked by the client
         if (alreadyBooked) {
             System.out.printf("\nYou have already hired the Partner, Multiple booking for a partner is not possible on the same Date and Time !\n\n");
+            return false;
+        }
+
+        // check hour before or after the time slot
+        if(!afterBeforeTimeSlot)
+        {
+            System.out.println("\nSlot Unavailable due to prior time of Service, Try Another Time Slot !");
             return false;
         }
 
