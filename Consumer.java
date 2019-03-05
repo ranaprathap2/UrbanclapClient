@@ -52,7 +52,7 @@ public abstract class Consumer implements EndUser {
 
         Connection connection = SQLiteConnection.connectDB();
         PreparedStatement pstmt = null;
-        String sql = null;
+        String sql;
 
         try {
 
@@ -68,7 +68,7 @@ public abstract class Consumer implements EndUser {
                 pstmt.setString(2,client.getClientName());
                 pstmt.setString(3,client.getContactNo());
                 pstmt.setString(4,client.geteMailID());
-                pstmt.setString(5,PasswordUtils.hashPassword(client.getPassword(),12));
+                pstmt.setString(5,PasswordUtils.hashPassword(client.getPassword()));
             }
 
             else if(this instanceof Guest)
@@ -106,21 +106,15 @@ public abstract class Consumer implements EndUser {
         do
         {
             System.out.printf("\nChoose Your City  : ");
-            if(in.hasNextInt())
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 city = in.nextInt();
 
                 if(city>0 && city<=mapCities.size())
                     break;
                 else
-                    System.out.println("Invalid Input, Enter Again !");
+                    System.out.println("Invalid Input, Enter an Integer from the Above ResultSet !");
             }
-            else
-            {
-                System.out.println("Input Mismatch Enter an Integer Value from the Above ResultSet");
-                in.next();
-            }
-
         }while(true);
 
         System.out.println("LIST OF SERVICE CATEGORIES : ");
@@ -130,19 +124,14 @@ public abstract class Consumer implements EndUser {
         {
             System.out.printf("\nPick One : ");
 
-            if(in.hasNextInt())
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 serviceCategory = in.nextInt();
 
                 if(serviceCategory>0 && serviceCategory<=mapServices.size())
                     break;
                 else
-                    System.out.println("Invalid Input, Enter Again !");
-            }
-            else
-            {
-                System.out.println("Input Mismatch Enter an Integer Value from the Above ResultSet");
-                in.next();
+                    System.out.println("Invalid Input, Enter an Integer from the Above ResultSet !");
             }
         }while(true);
 
@@ -181,7 +170,7 @@ public abstract class Consumer implements EndUser {
     }
 
     public boolean readyToHire() {
-        int interest=0;
+        int interest;
         Scanner in = new Scanner(System.in);
 
         do
@@ -189,27 +178,20 @@ public abstract class Consumer implements EndUser {
             System.out.print("Interested to Hire ? ");
             System.out.println("1.Yes    2.No ");
 
-            if(in.hasNextInt())
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 interest = in.nextInt();
-                if(interest==1 || interest==2)
+
+                if(interest == 1)
+                    return true;
+                if(interest==2)
                     break;
                 else
                     System.out.println("Invalid Choice ! Enter an Integer from the Options.");
             }
-            else
-            {
-                System.out.println("Input Mismatch ! Enter an Integer value .");
-                in.next();
-            }
-
         }while(true);
 
-        if (interest == 1)
-            return true;
-        else
-            return false;
-
+       return false;
     }
 
     private Boolean getPartnersFromDB(String serviceCategory, String city) {
@@ -260,9 +242,8 @@ public abstract class Consumer implements EndUser {
             ResultSet resultSet = statement.executeQuery(parseQuery);
 
             while(resultSet.next())
-            {
                 setCities.add(resultSet.getString("City"));
-            }
+
             connection.close();
         }
         catch(Exception e)
@@ -295,9 +276,8 @@ public abstract class Consumer implements EndUser {
             resultSet = statement.executeQuery(parseQuery);
 
             while(resultSet.next())
-            {
                 setServices.add(resultSet.getString("ServiceCategory"));
-            }
+
             connection.close();
         }
         catch(Exception e)
@@ -319,32 +299,28 @@ public abstract class Consumer implements EndUser {
 
     public boolean readyToUpdateRequest() {
         Scanner in = new Scanner(System.in);
-        int option=0;
+        int option;
         do
         {
             System.out.print("Ready to update request ? ");
             System.out.println("1. Yes        2. No");
 
-            if(in.hasNextInt())
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 option = in.nextInt();
-                if(option==1 || option==2)
+
+                if (option == 1)
+                    return true;
+
+                else if(option==2)
                     break;
+
                 else
                     System.out.println("Invalid Choice ! Enter an integer from the Options.");
             }
-            else
-            {
-                System.out.println("Input Mismatch ! Enter an Integer value .");
-                in.next();
-            }
-
         }while(true);
 
-        if (option == 1)
-            return true;
-        else
-            return false;
+        return false;
     }
 
     private boolean verifyRequestID(String consumerID,String requestID)
@@ -385,8 +361,9 @@ public abstract class Consumer implements EndUser {
         Scanner in = new Scanner(System.in);
         int option;
 
-        String requestID = null;
+        String requestID;
         String consumerID = null;
+        Bookings bookings = new Bookings();
 
         System.out.println("Update Your Request :");
 
@@ -410,57 +387,53 @@ public abstract class Consumer implements EndUser {
 
         }while(true);
 
-        do {
-            System.out.print("Enter your option 1. Processed 2. Cancelled: ");
-            if(in.hasNextInt())
+        System.out.print("Enter your option 1. Processed 2. Cancelled: ");
+
+        while(true) {
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 option = in.nextInt();
-                if(option==1 || option==2)
+                // If processed ask for rating else skip
+                if(option == 1)
+                {
+                    int rating = askRatingForTheServicedRequest();
+                    bookings.updateRatings(rating, requestID);
                     break;
+                }
+
+                else if(option ==2)
+                    break;
+
                 else
                     System.out.println("Invalid Choice ! Enter a Valid Option .");
             }
-            else
-            {
-                System.out.println("Input Mismatch ! Enter an Integer Value.");
-                in.next();
-            }
-
-        }while(true);
-
-
-        Bookings bookings = new Bookings();
-        bookings.updateBookingRequest(option, requestID);
-
-        if (option == 1) {
-            int rating = 1;
-            System.out.println("Update Rating for the Service (1 to 5): ");
-
-            do {
-                if(in.hasNextInt())
-                {
-                    rating = in.nextInt();
-
-                    if(rating>0 && rating<6)
-                        break;
-                    else
-                        System.out.println("Invalid Rating , Input a Rating Value b/w 1 and 5");
-                }
-                else
-                {
-                    System.out.println("Input Mismatch , Enter an Integer Value from 1 to 5 !");
-                    in.next();
-                }
-
-            }while(true);
-
-            bookings.updateRatings(rating, requestID);
         }
+
+        bookings.updateBookingRequest(option, requestID);
+    }
+
+    public int askRatingForTheServicedRequest()
+    {
+        int rating;
+        Scanner in = new Scanner(System.in);
+        System.out.println("Update Rating for the Service (1 to 5): ");
+
+        while(true){
+            if(InputUtils.checkIntegerMismatch(in))
+            {
+                rating = in.nextInt();
+                if(rating>0 && rating<6)
+                    break;
+                else
+                    System.out.println("Invalid Rating , Input a Rating Value b/w 1 and 5");
+            }
+        }
+        return rating;
     }
 
     public void loadDashboard() {
         Scanner in = new Scanner(System.in);
-        int choice=0;
+        int choice;
 
         do {
             System.out.println("1 -> SEARCH FOR SERVICES");
@@ -469,29 +442,25 @@ public abstract class Consumer implements EndUser {
 
             System.out.printf("\n Enter Your Choice : ");
 
-            if(in.hasNextInt())
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 choice = in.nextInt();
 
-                if(!(choice>0 && choice<4))
+                if (choice == 1)
+                    searchForServices();
+
+                else if (choice == 2)
+                    viewBookingInfo();
+
+                else if(choice == 3)
+                    break;
+
+                else
                 {
                     System.out.println("Invalid Choice !");
                     continue;
                 }
             }
-            else
-            {
-                System.out.println("Input Mismatch ! Enter a valid Integer from the Menu .");
-                in.next();
-                continue;
-            }
-
-            if (choice == 1)
-                searchForServices();
-
-            if (choice == 2)
-                viewBookingInfo();
-
-        } while (choice != 3);
+        } while (true);
     }
 }

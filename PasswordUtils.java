@@ -6,7 +6,7 @@ public class PasswordUtils {
     }
 
     // function to hash password using Bcrypt
-    public static String hashPassword(String originalPassword, int genericSaltLength)
+    public static String hashPassword(String originalPassword)
     {
         return BCrypt.hashpw(originalPassword, BCrypt.gensalt(12));
     }
@@ -16,5 +16,4 @@ public class PasswordUtils {
     {
         return BCrypt.checkpw(orginalPassword,generatedSecuredPasswordHash);
     }
-
 }

@@ -54,13 +54,14 @@ public class Guest extends Consumer {
         {
             saveUserToDB();
             System.out.println("Guest Details added successfully");
+            return true;
         }
         catch(Exception e)
         {
            System.out.println(e.getMessage());
         }
 
-        return true;
+        return false;
     }
 
     @Override

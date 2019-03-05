@@ -47,11 +47,9 @@ public class Client extends Consumer {
         password = in.next();
 
         Connection connection = SQLiteConnection.connectDB();
-        String dbPassword = null;
+        String dbPassword;
 
-        boolean resultSetExists = true;
-
-        String passQuery = "select *from Consumers where eMail=?";
+        String passQuery = "select *from Consumers where eMail=? AND ConsumerID like 'CL-%'";
 
         try
         {
@@ -68,10 +66,24 @@ public class Client extends Consumer {
                 this.clientName = resultSet.getString(2);
                 this.contactNo = resultSet.getString(3);
                 this.eMailID = resultSet.getString(4);
-                this.password = resultSet.getString(5);
+                this.password = dbPassword;
+
+                if (PasswordUtils.checkPasswordWithHash(password,dbPassword))
+                {
+                    System.out.println("-------------------------------------------");
+                    System.out.println("Logged in as Client , Your ClientID :"+getClientID());
+                    System.out.println("Welcome "+getClientName()+" !");
+                    System.out.println("-------------------------------------------");
+                    System.out.println();
+
+                    connection.close();
+                    return true;
+                }
+                else
+                    System.out.println("Password Incorrect !");
             }
             else
-                resultSetExists =false;
+                System.out.println("Invalid Login Credentials !");
 
             connection.close();
         }
@@ -80,34 +92,12 @@ public class Client extends Consumer {
             System.out.println(e.getMessage());
         }
 
-        if(!resultSetExists)
-        {
-            System.out.println("Invalid Login Credentials !");
-            return false;
-        }
-        else
-        {
-            if (PasswordUtils.checkPasswordWithHash(password,dbPassword))
-            {
-                System.out.println("-------------------------------------------");
-                System.out.println("Logged in as Client , Your ClientID :"+getClientID());
-                System.out.println("Welcome "+getClientName()+" !");
-                System.out.println("-------------------------------------------");
-                System.out.println();
-
-                return true;
-            }
-            else
-                System.out.println("Password Incorrect !");
-        }
-
         return false;
     }
 
-    public boolean verifyMail(String mail)
+    private boolean verifyMail(String mail)
     {
         String parseQuery = "select *from Consumers where eMail=? AND ConsumerID like 'CL-%'";
-        Boolean mailAlreadyExist = false;
 
         try
         {
@@ -119,17 +109,17 @@ public class Client extends Consumer {
 
             if(resultSet.next()!=false)
             {
-                mailAlreadyExist = true;
+                connection.close();
+                return true;
             }
-
+            // also close the connection when no resultSet exist and then return false
             connection.close();
         }
         catch(Exception e)
         {
             System.out.println(e.getMessage());
         }
-
-        return mailAlreadyExist;
+        return false;
     }
 
     public void registerClient() {
@@ -150,6 +140,7 @@ public class Client extends Consumer {
                 System.out.println("The eMail ID you have entered already exist !, Try an alternate eMail ID");
             else
                 break;
+
         }while(true);
 
         do {
@@ -160,10 +151,7 @@ public class Client extends Consumer {
             confirmPassword = in.next();
 
             if(!PasswordUtils.validate(password, confirmPassword))
-            {
                 System.out.println("Password Mismatch Enter Again !");
-                continue;
-            }
             else
                 break;
 
@@ -179,7 +167,7 @@ public class Client extends Consumer {
 
     public void viewBookingInfo() {
         Scanner in = new Scanner(System.in);
-        int option=0;
+        int option;
 
         do {
             System.out.println("1 -> ONGOING REQUESTS");
@@ -188,38 +176,30 @@ public class Client extends Consumer {
 
             System.out.print("Enter Option : ");
 
-            if(in.hasNextInt())
+            if(InputUtils.checkIntegerMismatch(in))
             {
                 option = in.nextInt();
 
-                if(!(option>0 && option<4))
-                {
+                if (option == 1)
+                    listOngoingRequests();
+
+                else if (option == 2)
+                    listBookingHistory();
+
+                else if(option == 3)
+                    break;
+
+                else
                     System.out.println("Invalid Choice !");
-                    continue;
-                }
             }
-            else
-            {
-                System.out.println("Input Mismatch ! Enter a valid Integer value.");
-                in.next();
-                continue;
-            }
-
-            if (option == 1)
-                listOngoingRequests();
-
-            if (option == 2)
-                listBookingHistory();
-
-        } while (option != 3);
+        } while (true);
     }
 
-    public void listOngoingRequests() {
+    private void listOngoingRequests() {
         Bookings request = new Bookings();
-        boolean requestsFound = request.getOngoingRequests(this);
+        boolean requestsFound = request.getOngoingRequests(getClientID(),getClientName());
 
-        if (requestsFound) {
-            if (readyToUpdateRequest())
+        if (requestsFound && readyToUpdateRequest()) {
                 updateRequest();
         }
         else {
