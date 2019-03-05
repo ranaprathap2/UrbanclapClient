@@ -59,12 +59,12 @@ public abstract class Consumer implements EndUser {
             if(this instanceof Client)
             {
                 Client client = (Client)this;
-                String clientID = getUserID();
-                client.setClientID(clientID);
+                //String clientID = getUserID();
+                client.setClientID(getUserID());
 
                 sql = "INSERT INTO Consumers VALUES(?,?,?,?,?)";
                 pstmt = connection.prepareStatement(sql);
-                pstmt.setString(1,clientID);
+                pstmt.setString(1,client.getClientID());
                 pstmt.setString(2,client.getClientName());
                 pstmt.setString(3,client.getContactNo());
                 pstmt.setString(4,client.geteMailID());
@@ -74,8 +74,8 @@ public abstract class Consumer implements EndUser {
             else if(this instanceof Guest)
             {
                 Guest guest = (Guest)this;
-                String guestID = getUserID();
-                guest.setGuestID(guestID);
+                //String guestID = getUserID();
+                guest.setGuestID(getUserID());
 
                 sql = "INSERT INTO Consumers (ConsumerID,Name,ContactNo,eMail) VALUES(?,?,?,?)";
                 pstmt = connection.prepareStatement(sql);
@@ -266,14 +266,13 @@ public abstract class Consumer implements EndUser {
     public HashMap<Integer,String> fetchServiceTypesFromDB()
     {
         String parseQuery = "select ServiceCategory from Partners";
-        Connection connection = SQLiteConnection.connectDB();
-        ResultSet resultSet = null;
 
         HashSet<String> setServices = new HashSet<String>();
         try
         {
+            Connection connection = SQLiteConnection.connectDB();
             Statement statement = connection.createStatement();
-            resultSet = statement.executeQuery(parseQuery);
+            ResultSet resultSet = statement.executeQuery(parseQuery);
 
             while(resultSet.next())
                 setServices.add(resultSet.getString("ServiceCategory"));

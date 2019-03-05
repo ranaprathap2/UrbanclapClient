@@ -107,7 +107,7 @@ public class Client extends Consumer {
 
             ResultSet resultSet = preparedStatement.executeQuery();
 
-            if(resultSet.next()!=false)
+            if(resultSet.next())
             {
                 connection.close();
                 return true;

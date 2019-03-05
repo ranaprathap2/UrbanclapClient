@@ -45,7 +45,7 @@ public class Guest extends Consumer {
         this.guestName = in.nextLine();
 
         System.out.println("Enter Your Contact No : ");
-        this.contactNo = in.next();
+        this.contactNo = in.nextLine();
 
         System.out.println("Enter Your eMail ID : ");
         this.eMailID = in.next();
@@ -76,42 +76,49 @@ public class Guest extends Consumer {
         try
         {
             Connection connection = SQLiteConnection.connectDB();
-
             String parseQuery="select Bookings.RequestID,Bookings.PartnerID,Partners.Name,Partners.Profession,Partners.ContactNo,Bookings.DateOfRequest,Bookings.DateOfBooking,Bookings.Status,Bookings.Rating from Bookings INNER JOIN Partners ON Bookings.PartnerID=Partners.PartnerID where Bookings.ConsumerID=?";
-            PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
-            preparedStatement.setString(1,getGuestDetailsFromMail(mail));
 
-            ResultSet resultSet = preparedStatement.executeQuery();
+            String guestID = getGuestDetailsFromMail(mail);
+            if(guestID!=null)
+            {
+                PreparedStatement preparedStatement = connection.prepareStatement(parseQuery);
+                preparedStatement.setString(1,guestID);
 
-            if(resultSet.next())
-                if(resultSet.getString("Status").equals("Processed") || resultSet.getString("Status").equals("Cancelled"))
-                    requestEnded=true;
 
-                System.out.println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-                System.out.println("RequestID       PartnerID               PartnerName                     Profession              ContactNo          DateOfRequest      DateOfBooking             Status              Rating");
-                System.out.println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                ResultSet resultSet = preparedStatement.executeQuery();
+                if(resultSet.next())
+                {
+                    if(resultSet.getString("Status").equals("Processed") || resultSet.getString("Status").equals("Cancelled"))
+                        requestEnded=true;
+
+                    System.out.println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                    System.out.println("RequestID       PartnerID               PartnerName                     Profession              ContactNo          DateOfRequest      DateOfBooking             Status              Rating");
+                    System.out.println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
 
                     //System.out.println(resultSet.getString("RequestID") +"              "+ resultSet.getString("PartnerID")+"                     "+resultSet.getString("Name")+"                   "+resultSet.getString("Profession")+"           "+resultSet.getString("ContactNo")+"           "+resultSet.getString("DateOfRequest")+"            "+resultSet.getString("DateOfBooking")+"            "+resultSet.getString("Status")+"           "+resultSet.getInt("Rating"));
-                System.out.printf("%8s    %10s    %25s         %30s     %10s      %18s    %18s   %12s                %d \n",resultSet.getString("RequestID"),resultSet.getString("PartnerID"),resultSet.getString("Name"),resultSet.getString("Profession"),resultSet.getString("ContactNo"),resultSet.getString("DateOfRequest"),resultSet.getString("DateOfBooking"),resultSet.getString("Status"),resultSet.getInt("Rating"));
+                    System.out.printf("%8s    %10s    %25s         %30s     %10s      %18s    %18s   %12s                %d \n",resultSet.getString("RequestID"),resultSet.getString("PartnerID"),resultSet.getString("Name"),resultSet.getString("Profession"),resultSet.getString("ContactNo"),resultSet.getString("DateOfRequest"),resultSet.getString("DateOfBooking"),resultSet.getString("Status"),resultSet.getInt("Rating"));
 
-                System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+                    System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
+                }
+                connection.close();
 
-            connection.close();
+                if(!requestEnded && readyToUpdateRequest())
+                    updateRequest();
+            }
+            else
+                System.out.println("Invalid Guest !");
         }
         catch(Exception e)
         {
             System.out.println(e.getMessage());
         }
-
-        if(!requestEnded && readyToUpdateRequest())
-            updateRequest();
     }
 
     public String getGuestDetailsFromMail(String mail)
     {
-        String parseQuery="select *from Consumers where eMail=?";
+        String parseQuery="select *from Consumers where eMail=? AND ConsumerID like 'GU-%'";
         String guestID = null;
 
         try
