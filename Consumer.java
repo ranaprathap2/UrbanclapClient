@@ -2,9 +2,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Scanner;
+import java.util.*;
 
 public abstract class Consumer implements EndUser {
 
@@ -101,7 +99,8 @@ public abstract class Consumer implements EndUser {
         Scanner in = new Scanner(System.in);
 
         System.out.println("LIST OF CITIES : ");
-        HashMap<Integer, String> mapCities= fetchCitiesFromDB();
+        ArrayList<String> citiesListFromDB= fetchCitiesFromDB();
+        viewDBListItems(citiesListFromDB);
 
         do
         {
@@ -110,7 +109,7 @@ public abstract class Consumer implements EndUser {
             {
                 city = in.nextInt();
 
-                if(city>0 && city<=mapCities.size())
+                if(city>0 && city<=citiesListFromDB.size()+1)
                     break;
                 else
                     System.out.println("Invalid Input, Enter an Integer from the Above ResultSet !");
@@ -118,7 +117,8 @@ public abstract class Consumer implements EndUser {
         }while(true);
 
         System.out.println("LIST OF SERVICE CATEGORIES : ");
-        HashMap<Integer, String> mapServices= fetchServiceTypesFromDB();
+        ArrayList<String> servicesListFromDB = fetchServiceTypesFromDB();
+        viewDBListItems(servicesListFromDB);
 
         do
         {
@@ -128,7 +128,7 @@ public abstract class Consumer implements EndUser {
             {
                 serviceCategory = in.nextInt();
 
-                if(serviceCategory>0 && serviceCategory<=mapServices.size())
+                if(serviceCategory>0 && serviceCategory<=servicesListFromDB.size()+1)
                     break;
                 else
                     System.out.println("Invalid Input, Enter an Integer from the Above ResultSet !");
@@ -137,11 +137,10 @@ public abstract class Consumer implements EndUser {
 
         System.out.println();
 
-        Boolean partnersFound = getPartnersFromDB(mapToServices(mapServices,serviceCategory), mapToCities(mapCities,city));
-
+        Boolean partnersFound = viewPartnersFromDB(servicesListFromDB.get(serviceCategory-1), citiesListFromDB.get(city-1));
 
         if (partnersFound) {
-            if (readyToHire()) {
+            if (userReadyToHire()) {
                 // If a guest user wants to make a request then add this details
                 if(this instanceof Guest)
                 {
@@ -151,7 +150,7 @@ public abstract class Consumer implements EndUser {
 
                 // create Request when ready to hire
                 Bookings requests = new Bookings();
-                requests.makeRequest(this,mapToCities(mapCities,city),mapToServices(mapServices,serviceCategory));
+                requests.makeRequest(this,citiesListFromDB.get(city-1),servicesListFromDB.get(serviceCategory-1));
             }
         }
         else {
@@ -159,17 +158,15 @@ public abstract class Consumer implements EndUser {
         }
     }
 
-    public String mapToCities(HashMap<Integer,String> mapCities,int index)
+    public void viewDBListItems(ArrayList<String> setFromDB)
     {
-        return mapCities.get(index);
+        int index=0;
+
+        for(String str : setFromDB)
+            System.out.println(++index+" -> "+str);
     }
 
-    public String mapToServices(HashMap<Integer,String> mapServices,int index)
-    {
-        return mapServices.get(index);
-    }
-
-    public boolean readyToHire() {
+    public boolean userReadyToHire() {
         int interest;
         Scanner in = new Scanner(System.in);
 
@@ -194,7 +191,7 @@ public abstract class Consumer implements EndUser {
        return false;
     }
 
-    private Boolean getPartnersFromDB(String serviceCategory, String city) {
+    private Boolean viewPartnersFromDB(String serviceCategory, String city) {
         String parseQuery = "select *from Partners where ServiceCategory = ? and City = ?";
         Boolean resultSetExist = true;
 
@@ -230,7 +227,7 @@ public abstract class Consumer implements EndUser {
     }
 
 
-    public HashMap<Integer,String> fetchCitiesFromDB()
+    public ArrayList<String> fetchCitiesFromDB()
     {
         String parseQuery = "select City from Partners";
         Connection connection = SQLiteConnection.connectDB();
@@ -248,22 +245,13 @@ public abstract class Consumer implements EndUser {
         }
         catch(Exception e)
         {
-            System.out.println(e.getMessage());
+                System.out.println(e.getMessage());
         }
 
-        HashMap<Integer,String> citiesMap = new HashMap<Integer,String>();
-        int index=0;
-
-        for(String str : setCities)
-            citiesMap.put(++index,str);
-
-        for(int i=1;i<=citiesMap.size();i++)
-            System.out.println(i+" -> "+citiesMap.get(i));
-
-        return citiesMap;
+        return new ArrayList<String>(setCities);
     }
 
-    public HashMap<Integer,String> fetchServiceTypesFromDB()
+    public ArrayList<String> fetchServiceTypesFromDB()
     {
         String parseQuery = "select ServiceCategory from Partners";
 
@@ -284,19 +272,10 @@ public abstract class Consumer implements EndUser {
             System.out.println(e.getMessage());
         }
 
-        HashMap<Integer,String> servicesMap = new HashMap<Integer,String>();
-        int index=0;
-
-        for(String str : setServices)
-            servicesMap.put(++index,str);
-
-        for(int i=1;i<=servicesMap.size();i++)
-            System.out.println(i+" -> "+servicesMap.get(i));
-
-        return servicesMap;
+        return new ArrayList<String>(setServices);
     }
 
-    public boolean readyToUpdateRequest() {
+    public boolean userReadyToUpdateRequest() {
         Scanner in = new Scanner(System.in);
         int option;
         do

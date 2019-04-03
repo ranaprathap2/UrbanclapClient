@@ -162,7 +162,10 @@ public class Client extends Consumer {
     }
 
     private void listBookingHistory() {
-        new Bookings().getBookingHistory(clientID);
+        boolean bookingHistoryExist = new Bookings().viewBookingHistory(clientID);
+
+        if(!bookingHistoryExist)
+            System.out.println("No Booking History Available for You !");
     }
 
     public void viewBookingInfo() {
@@ -197,9 +200,10 @@ public class Client extends Consumer {
 
     private void listOngoingRequests() {
         Bookings request = new Bookings();
-        boolean requestsFound = request.getOngoingRequests(getClientID(),getClientName());
+        boolean requestsFound = request.viewOngoingRequests(getClientID(),getClientName());
 
-        if (requestsFound && readyToUpdateRequest()) {
+        if (requestsFound) {
+            if(userReadyToUpdateRequest())
                 updateRequest();
         }
         else {

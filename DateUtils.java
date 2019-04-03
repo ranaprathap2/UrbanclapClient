@@ -17,6 +17,7 @@ public class DateUtils {
 
         else if(dateOfBooking.compareTo(dateOfRequest)<0)
             System.out.println("Sorry, Booking on previous Date and Time is Invalid ! Retry");
+
         else
         {
             long diffInMillies =  Duration.between(validFromDate,dateOfBooking).toMillis();
